@@ -278,3 +278,51 @@ def test_storage_migrates_old_schema_and_web():
     page = c.get("/").data.decode()
     assert "X" in page and "legacy" in page
     assert c.get("/api/stats").status_code == 200
+
+
+# ------------------------------------------------------------------ hisse evreni (BIST 30/50/100 + Yıldız Pazar)
+SAMPLE_CSV = (
+    "BILESEN KODU;BULTEN_ADI;ENDEKS KODU;ENDEKS ADI\n"
+    "CONSTITUENT CODE;NAME;INDEX CODE;INDEX NAME\n"           # dosyadaki İngilizce başlık satırı
+    "THYAO.E;TÜRK HAVA YOLLARI;XU030;BIST 30\n"
+    "THYAO.E;TÜRK HAVA YOLLARI;XU100;BIST 100\n"
+    "THYAO.E;TÜRK HAVA YOLLARI;XYLDZ;BIST YILDIZ\n"
+    "ASTOR.E;ASTOR ENERJİ;XU050;BIST 50\n"
+    "MIATK.E;MIA TEKNOLOJİ;XYLDZ;BIST YILDIZ\n"
+    "GARAN.E;GARANTİ BANKASI;XBANK;BIST BANKA\n"               # istenmeyen endeks
+).encode("cp1254")
+
+
+def test_universe_parse_components():
+    import universe
+    m = universe.parse_components(SAMPLE_CSV, ["XU030", "XU050", "XU100", "XYLDZ"])
+    assert set(m) == {"THYAO.IS", "ASTOR.IS", "MIATK.IS"}
+    assert sorted(m["THYAO.IS"]) == ["XU030", "XU100", "XYLDZ"]
+    m2 = universe.parse_components(SAMPLE_CSV.decode("cp1254").encode("utf-8"), ["XYLDZ"])
+    assert set(m2) == {"THYAO.IS", "MIATK.IS"}
+
+
+def test_universe_fallback_chain(monkeypatch, tmp_path):
+    import universe
+    monkeypatch.setattr(universe, "CACHE", tmp_path / "u.json")
+    monkeypatch.delenv("SYMBOLS", raising=False)
+    big = SAMPLE_CSV + "".join(f"S{k:04d}.E;X;XU100;BIST 100\n".replace("S", "AB") for k in range(40)).encode()
+    # 1) indirme başarılı → kaynak borsaistanbul + önbellek yazılır
+    monkeypatch.setattr(universe, "_download", lambda: big)
+    universe.refresh(force=True)
+    assert universe.source() == "borsaistanbul" and "THYAO.IS" in universe.get_symbols()
+    assert universe.label("THYAO.IS") == "BIST 30 · Yıldız Pazar"
+    assert universe.label("ASTOR.IS") == "BIST 50"
+    # 2) indirme başarısız → önbellek
+    def boom():
+        raise OSError("ağ yok")
+    monkeypatch.setattr(universe, "_download", boom)
+    universe.refresh(force=True)
+    assert universe.source() == "önbellek" and "MIATK.IS" in universe.get_symbols()
+    # 3) önbellek de yok → yerleşik liste
+    (tmp_path / "u.json").unlink()
+    universe.refresh(force=True)
+    assert universe.source() == "yerleşik liste" and len(universe.get_symbols()) == len(config.DEFAULT_SYMBOLS_IS)
+    # 4) SYMBOLS elle verilirse her şeyin önüne geçer
+    monkeypatch.setenv("SYMBOLS", "thyao, garan")
+    assert universe.get_symbols() == ["THYAO.IS", "GARAN.IS"]

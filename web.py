@@ -8,7 +8,7 @@ import config
 import storage
 
 app = Flask(__name__)
-STATE = {"started_at": None, "last_scan": {}, "last_pnl": None, "provider": None}
+STATE = {"started_at": None, "last_scan": {}, "last_pnl": None, "provider": None, "universe": None}
 
 STATUS_COLOR = {"PENDING": "#aaa", "OPEN": "#9ad", "TP": "lime", "SL": "#f55",
                 "INVALID": "#f90", "EXPIRED": "#fb3", "SKIPPED": "#777"}
@@ -48,7 +48,8 @@ def index():
          "th{background:#1c1c1c}.w{overflow-x:auto;margin-bottom:18px}small{color:#888}</style></head><body>",
          "<h2>⚡ BIST Strateji Tarayıcı</h2>",
          f"<p><small>Veri: {escape(str(STATE['provider']))} (Yahoo ≈15 dk gecikmeli) · Etkin: "
-         f"{escape(', '.join(config.ENABLED_STRATEGIES))} · Son tarama: {escape(str(STATE['last_scan']))} · "
+         f"{escape(', '.join(config.ENABLED_STRATEGIES))} · Evren: {escape(str(STATE['universe']))} · "
+         f"Son tarama: {escape(str(STATE['last_scan']))} · "
          f"PnL'ler gidiş-dönüş {cost:.2f}% maliyet sonrası NET</small></p>",
          "<h3>Strateji bazında sonuçlar (kapanan işlemler)</h3><div class='w'><table>",
          "<tr><th>Strateji</th><th>İşlem</th><th>Kazanma %</th><th>Ort. kazanç</th><th>Ort. kayıp</th>"

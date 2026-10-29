@@ -100,15 +100,30 @@ DEFAULT_SYMBOLS = [
 ]
 
 
-def get_symbols():
-    """SYMBOLS="THYAO,ASELS,..." ile listeyi kod değiştirmeden güncelleyebilirsiniz."""
-    raw = _env("SYMBOLS")
-    base = [s.strip().upper() for s in raw.split(",")] if raw else DEFAULT_SYMBOLS
+def normalize(symbols):
     out = []
-    for s in base:
+    for s in symbols:
+        s = s.strip().upper()
         if not s:
             continue
         s = s if s.endswith(".IS") else f"{s}.IS"
         if s not in out:
             out.append(s)
     return out
+
+
+DEFAULT_SYMBOLS_IS = normalize(DEFAULT_SYMBOLS)  # yalnızca yedek: endeks dosyası ve önbellek yoksa
+
+# Taranacak endeksler (Borsa İstanbul kodları). BIST 30 ⊂ BIST 50 ⊂ BIST 100; XYLDZ = Yıldız Pazar.
+UNIVERSE = [s.strip().upper() for s in _env("UNIVERSE", "XU030,XU050,XU100,XYLDZ").split(",") if s.strip()]
+
+
+def manual_symbols():
+    """SYMBOLS="THYAO,ASELS,..." verilirse endeks listesi yerine bu kullanılır."""
+    raw = os.environ.get("SYMBOLS", "").strip()
+    return normalize(raw.split(",")) if raw else []
+
+
+def get_symbols():
+    import universe  # döngüsel import'u önlemek için burada
+    return universe.get_symbols()

@@ -19,6 +19,10 @@ Bilinen sınırlamalar:
   * Günlük barlarda gün içi sıralama bilinmez; aynı barda stop ve hedef → stop varsayılır.
   * Getiriler işlem başına; portföy sermaye kısıtı / eşzamanlı pozisyon sınırı modellenmez.
 """
+import warnings
+# yfinance, pandas 3.1+ altında zararsız "inplace deprecated" uyarıları üretiyor; logları boğmasın
+warnings.filterwarnings("ignore", message=r".*inplace keyword.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
 import argparse
 import asyncio
 import csv

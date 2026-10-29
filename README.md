@@ -36,6 +36,15 @@ Rejim yönlendirmesi (`strategies.STRATEGIES`):
 Canlıda varsayılan olarak açık olan stratejiler: `breakout`, `breakout_retest`, `trend_pullback`.
 Diğer ikisini önce backtest'te karşılaştırın, sonra `ENABLED_STRATEGIES` değişkenine ekleyin.
 
+## Taranan hisseler
+
+Varsayılan evren: **BIST 30 + BIST 50 + BIST 100 + Yıldız Pazar** (`UNIVERSE=XU030,XU050,XU100,XYLDZ`).
+Liste, Borsa İstanbul'un resmi endeks bileşen dosyasından (`hisse_endeks_ds.csv`) günde bir kez
+otomatik güncellenir; dönemsel endeks değişiklikleri ve yeni Yıldız Pazar hisseleri kendiliğinden girer.
+Dosyaya ulaşılamazsa son başarılı liste (`/data/universe_cache.json`), o da yoksa yerleşik 130 hisselik
+liste kullanılır. `SYMBOLS=THYAO,ASELS,...` verilirse endeks listesi yerine o kullanılır.
+Telegram mesajlarında hissenin endeksi de yazar (ör. "BIST 30 · Yıldız Pazar").
+
 ## Sinyal yaşam döngüsü
 
 `PENDING` (sinyal bar kapanışında) → sonraki barın açılışı = giriş → `OPEN` →

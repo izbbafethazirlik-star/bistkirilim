@@ -2,6 +2,10 @@
 
 Çalıştırma: python bot_bist.py
 """
+import warnings
+# yfinance, pandas 3.1+ altında zararsız "inplace deprecated" uyarıları üretiyor; logları boğmasın
+warnings.filterwarnings("ignore", message=r".*inplace keyword.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
 import asyncio
 import html
 import logging
@@ -14,6 +18,7 @@ from waitress import serve
 import config
 import storage
 import strategy
+import universe
 from data_source import get_provider
 from notifier import TelegramQueue
 from regime import LABELS_TR
@@ -61,7 +66,9 @@ class QuantBot:
 
     # ---------------- TARAMA ----------------
     async def scan(self, interval: str):
-        symbols = config.get_symbols()
+        loop = asyncio.get_running_loop()
+        symbols = await loop.run_in_executor(None, config.get_symbols)  # günde bir kez ağdan yenilenir
+        STATE["universe"] = f"{len(symbols)} hisse ({universe.source()})"
         random.shuffle(symbols)
         period = config.LOOKBACK.get(interval, "6mo")
         logger.info(f"🔍 {interval} taraması: {len(symbols)} sembol | stratejiler={config.ENABLED_STRATEGIES}")
@@ -109,7 +116,8 @@ class QuantBot:
         reasons = "\n".join(f"• {html.escape(r)}" for r in c.reasons)
         caption = (
             f"🤖 <b>{NAMES_TR.get(c.strategy, c.strategy)}</b> ({sig['interval']})\n\n"
-            f"📈 <b>{name}</b> · Rejim: {LABELS_TR.get(c.regime, c.regime)}\n"
+            f"📈 <b>{name}</b>" + (f" ({universe.label(sig['symbol'])})" if universe.label(sig["symbol"]) else "")
+            + f"\n🧭 Rejim: {LABELS_TR.get(c.regime, c.regime)}\n"
             f"💰 Sinyal: {c.entry_ref:.2f} TL (bar: {sig['bar_time'][:16].replace('T', ' ')})\n"
             f"⛔ Stop: {c.stop:.2f} (-{c.risk_pct:.1f}%)  🎯 Hedef: {c.target:.2f} ({config.TARGET_R:g}R)\n"
             + (f"❌ İptal: {c.invalidation:.2f} altında kapanış\n" if c.invalidation else "")
